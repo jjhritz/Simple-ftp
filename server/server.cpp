@@ -45,10 +45,12 @@
 #include <string.h>
 #include <unistd.h>
 #include <vector>
+#include <string>
 #include <algorithm>
 #include <iostream>
 #include <ios>
 #include <sstream>
+#include <fstream>
 
 //contains definitions of a number of data types used in system calls
 #include <sys/types.h>
@@ -72,6 +74,8 @@ std::vector<int> child_pids;
 int active_children = 0;
 
 //variable declarations
+int n;
+int pid;
 
 //sockfd and newsockfd are file descriptors,These two variables store the values returned by the socket system call and the accept system call.
 //portno stores the port number on which the server accepts connections.
@@ -93,18 +97,44 @@ void child_error(const char *msg)
     _exit(0);
 }
 
-
-void client_service()
+std::string read_client()
 {
-    int n;
-    char buffer[256];
-
-    //while connection is open
-    while(1)
+    //Improved implementation of socket ready by Steve on StackOverflow: http://stackoverflow.com/questions/18670807/sending-and-receiving-stdstring-over-socket
+    // create the buffer with space for the data
+    const unsigned int MAX_BUF_LENGTH = 4096;
+    std::vector<char> buffer(MAX_BUF_LENGTH);
+    std::string rcv;
+    int bytesReceived = 0;
+    do
     {
-        std::cout << "Waiting for request from client " << users.back() << std::endl;
+        bytesReceived = recv(newsockfd, buffer.data(), buffer.size(), 0);
+        // append string from buffer.
+        if ( bytesReceived == -1 )
+        {
+            if(pid == 0)
+            {
+                child_error("ERROR on socket read.");
+            }
+            else
+            {
+                error("ERROR on socket read.");
+            }
+        }
+        else
+        {
+            rcv.append( buffer.cbegin(), buffer.cend() );
+        }
+    }
+    while ( bytesReceived == MAX_BUF_LENGTH );
+    // At this point we have the available data (which may not be a complete
+    // application level message).
 
-        bzero(buffer,256);
+    return rcv;
+
+    /*
+     * //Legacy implementation
+     *
+     * bzero(buffer,256);
         n = read(newsockfd,buffer,255);
 
         if (n < 0)
@@ -118,9 +148,44 @@ void client_service()
         }
 
         std::cout << "Message from client " << users.back() << ": " << buffer << std::endl;
+     */
+}
 
-        bzero(buffer,256);
-        n = write(newsockfd,"I got your message",18);
+int client_write(std::string message)
+{
+    int n;
+    n = write(newsockfd, message.c_str(), strlen(message.c_str()));
+
+    if(n < 1)
+    {
+        if(pid == 0)
+        {
+            child_error("ERROR on socket write.");
+        }
+        else
+        {
+            error("ERROR on socket write.");
+        }
+    }
+
+    return n;
+}
+
+void client_service()
+{
+    int n;
+    std::string response;
+
+    //while connection is open
+    while(1)
+    {
+        std::cout << "Waiting for request from client " << users.back() << std::endl;
+
+        response = read_client();
+
+        std::cout << "Message from client " << users.back() << ": " << response << std::endl;
+
+        n = client_write("I got your message");
     }
 
     //_exit(0);
@@ -201,12 +266,6 @@ int main(int argc, char *argv[])
     //clilen stores the size of the address of the client. This is required for the accept system call.
     socklen_t clilen;
 
-    //server reads characters from the socket connection into this buffer.
-    std::cout << "Allocating IO buffer..." << std::endl;
-    char buffer[256];
-    std::cout << "IO buffer allocated." << std::endl;
-
-
     //sockaddr_in is a structure containing an internet address
     /*
     struct sockaddr_in
@@ -221,8 +280,7 @@ int main(int argc, char *argv[])
 
     //serv_addr will contain the address of the server, and cli_addr will contain the address of the client which connects to the server.
     struct sockaddr_in serv_addr, cli_addr;
-    int n;
-    int pid;
+
 
     //create socket
     //it take three arguments - address domain, type of socket, protocol (zero allows the OS to choose thye appropriate protocols based on type of socket)
@@ -292,30 +350,17 @@ int main(int argc, char *argv[])
         {
             error("ERROR on accept");
         }
+
         std::cout << "Connection accepted." << std::endl;
 
-        //After a connection a client has successfully connected to the server
-        //initialize the buffer using the bzero() function
-        bzero(buffer,256);
-
-        //reads the client number from the socket into a buffer for a maximum of 255 characters
-        //read call uses new file descriptor, the one returned by accept()
 
         std::cout << "Acquiring client number..." << std::endl;
 
         //READ/WRITE 1
         //read client number from client
-        n = read(newsockfd,buffer,255);
+        std::string client_data = read_client();
 
-        if (n < 0)
-        {
-            error("ERROR reading from socket");
-        }
-
-        //convert client number to string
-        std::string client_data(buffer);
-
-        printf("Incoming client: %s\n",buffer);
+        std::cout << "Incoming client: " << client_data << std::endl;
 
 
         std::cout << "Checking client count..." << std::endl;
@@ -327,6 +372,7 @@ int main(int argc, char *argv[])
             std::cout << "Maximum clients reached.  Rejecting new client." << std::endl;
 
             /*
+             * //Writes removed due to unexplained zerg-rush of socket writes
             //READ/WRITE 2
             //reject connection with close(client_socket)
             n = write(newsockfd,"Max active clients reached.",18);
@@ -349,6 +395,7 @@ int main(int argc, char *argv[])
 
             //READ/WRITE 2
             /*
+             * //Wites removed due to unexplained zerg-rush
             n = write(newsockfd,"There's room for you",18);
 
             if (n < 0)
@@ -374,6 +421,7 @@ int main(int argc, char *argv[])
 
                 /*
                 //READ/WRITE 4
+                //Writes removed due to unexplained zerg-rush
                 //reject connection with close(client_socket)
                 n = write(newsockfd,"Client ID already online",18);
 
@@ -396,6 +444,7 @@ int main(int argc, char *argv[])
                 std::cout << "Client " << users.back() << " now registered." << std::endl;
 
                 /*
+                 * //Writes removed due to unexplained zerg-rush
                 //READ/WRITE 4
                 n = write(newsockfd,"You have been registered.",18);
 
@@ -415,12 +464,7 @@ int main(int argc, char *argv[])
                     std::cout << "Forked to handle client " << users.back() << "." << std::endl;
 
                     //READ/WRITE 5
-                    n = write(newsockfd,"Ready for requests.",18);
-
-                    if (n < 0)
-                    {
-                        error("ERROR writing to socket");
-                    }
+                    n = client_write("Ready for requests.");
 
                     client_service();
                 }

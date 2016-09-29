@@ -1,7 +1,7 @@
 //Name of Authros: John Hritz & Santiago Quinio
 //Course Number and Name: CSE434, Computer Networks
 //Semester: Fall 2016
-//Project Part 1
+//Project Part 2
 //Time Spent: 4 hours
 
 #include <stdio.h>
@@ -9,6 +9,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <vector>
+#include <string>
 #include <algorithm>
 #include <iostream>
 #include <ios>
@@ -53,7 +54,6 @@ struct  hostent
 */
 struct hostent *server;
 
-char buffer[256];
 
 void error(const char *msg)
 {
@@ -87,15 +87,45 @@ void client_service()
 }
  */
 
-void print_server()
+void print_server(std::string message)
 {
     //print server response
-    std::cout << "Server says: " << std::endl;
-    printf("%s\n", buffer);
+    std::cout << "Server says: " << message << std::endl;
 }
 
-void read_server()
+std::string read_server()
 {
+    //Improved implementation of socket ready by Steve on StackOverflow: http://stackoverflow.com/questions/18670807/sending-and-receiving-stdstring-over-socket
+    // create the buffer with space for the data
+    const unsigned int MAX_BUF_LENGTH = 4096;
+    std::vector<char> buffer(MAX_BUF_LENGTH);
+    std::string rcv;
+    int bytesReceived = 0;
+    do
+    {
+        bytesReceived = recv(sockfd, buffer.data(), buffer.size(), 0);
+        // append string from buffer.
+        if ( bytesReceived == -1 )
+        {
+            error("ERROR on socket read.");
+        }
+        else if(bytesReceived == 0)
+        {
+            error("ERROR You have been disconnected by the server.");
+        }
+        else
+        {
+            rcv.append( buffer.cbegin(), buffer.cend() );
+        }
+    }
+    while ( bytesReceived == MAX_BUF_LENGTH );
+    // At this point we have the available data (which may not be a complete
+    // application level message).
+
+    return rcv;
+
+    /*
+     * Legacy implementation
     bzero(buffer, 256);
     n = read(sockfd, buffer, 255);
 
@@ -110,6 +140,21 @@ void read_server()
     }
 
     print_server();
+    */
+}
+
+int write_server(std::string message)
+{
+    int n;
+    n = write(sockfd, message.c_str(), strlen(message.c_str()));
+
+    //check of the write function was successful or not
+    if (n < 0)
+    {
+        error("ERROR writing to socket");
+    }
+
+    return n;
 }
 
 int main(int argc, char *argv[])
@@ -137,7 +182,6 @@ int main(int argc, char *argv[])
     {
         error("ERROR: Ports numbered 1024 and below are reserved by the OS.");
     }
-
 
 
     //atoi() function can be used to convert port number from a string of digits to an integer, if your input is in the form of a string.
@@ -195,12 +239,9 @@ int main(int argc, char *argv[])
 
     //READ/WRITE 1
     //write from the argv[2] into the socket to send the client number to the serve
-    n = write(sockfd, argv[2], strlen(argv[2]));
+    n = write_server(argv[2]);
 
-    //check of the write function was successful or not
-    if (n < 0)
-        error("ERROR writing to socket");
-
+    /*
     //Check if number of clients is maximum
     //std::cout << "Checking if server will accept more clients..." << std::endl;
 
@@ -224,12 +265,14 @@ int main(int argc, char *argv[])
     //Should say "Client ID already online"
     //Or "You have been registered."
     //read_server();
+     */
 
     //READ/WRITE 5
     //check if server closed connection
     //should return 0
     //Or say "Ready for requests."
-    read_server();
+    std::string server_data = read_server();
+    print_server(server_data);
 
     bool more_commands = false;
     bool input_valid = false;
@@ -237,26 +280,21 @@ int main(int argc, char *argv[])
     //while the user has commands, send requests and receive responses
     do
     {
-        //empty buffer
-        bzero(buffer, 256);
+
+        std::string input;
 
         //prompt for input
         std::cout << "Your message: " << std::endl;
 
         //getinput
-        fgets(buffer,255,stdin);
+        getline(std::cin, input);
 
         //send request
-        n = write(sockfd,buffer,strlen(buffer));
-
-        //check of the write function was successful or not
-        if (n < 0)
-            error("ERROR writing to socket");
-
-        bzero(buffer, 256);
+        write_server(input);
 
         //get response
-        read_server();
+        std::string server_data = read_server();
+        print_server(server_data);
 
         do
         {
@@ -264,7 +302,7 @@ int main(int argc, char *argv[])
             //prompt for more commands
             std::cout << "Another command? y/n" << std::endl;
 
-            std::string input;
+
 
             std::cin >> input;
 
@@ -296,7 +334,6 @@ int main(int argc, char *argv[])
         std::cin.ignore(INT_MAX, '\n');
     }
     while(more_commands == true);
-
 
 
     //close connections using file descriptors
