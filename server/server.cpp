@@ -1,7 +1,7 @@
 //Name of Authros: John Hritz & Santiago Quinio
 //Course Number and Name: CSE434, Computer Networks
 //Semester: Fall 2016
-//Project Part 1
+//Project Part 2
 //Time Spent: 4 hours
 
 /*

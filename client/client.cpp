@@ -1,7 +1,7 @@
 //Name of Authros: John Hritz & Santiago Quinio
 //Course Number and Name: CSE434, Computer Networks
 //Semester: Fall 2016
-//Project Part 1
+//Project Part 2
 //Time Spent: 4 hours 
 
 #include <stdio.h>
@@ -58,31 +58,6 @@ void error(const char *msg)
 	exit(0);
 }
 
-/*
-void client_service()
-{
-	int n;
-	char buffer[256];
-	
-	//while connection is open
-	while(1)
-	{
-		n = read(newsockfd,buffer,255);
-
-		if(n<0)
-		{
-			child_error("ERROR reading from socket");
-		}
-		if(n == 0)
-		{
-			child_error("Connection closed by client");
-		}
-		std::cout<<"Message from client " << users.back() << ": " << buffer << std::endl;
-	
-		n = write(newsockfd,"I got your message", 18);
-	}
-}
- */
 
 void print_server()
 {
