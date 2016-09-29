@@ -1,8 +1,8 @@
 //Name of Authros: John Hritz & Santiago Quinio
 //Course Number and Name: CSE434, Computer Networks
 //Semester: Fall 2016
-//Project Part 2
-//Time Spent: 4 hours 
+//Project Part 1
+//Time Spent: 4 hours
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,6 +14,7 @@
 #include <ios>
 #include <sstream>
 #include <climits>
+#include <fstream>
 
 //contains definitions of a number of data types used in system calls
 #include <sys/types.h>
@@ -36,6 +37,8 @@ int sockfd, portno, n;
 //serv_addr will contain the address of the server
 struct sockaddr_in serv_addr;
 
+
+
 //variable server is a pointer to a structure of type hostent
 /*
 struct  hostent
@@ -54,10 +57,35 @@ char buffer[256];
 
 void error(const char *msg)
 {
-	perror(msg);
-	exit(0);
+    perror(msg);
+    exit(0);
 }
 
+/*
+void client_service()
+{
+	int n;
+	char buffer[256];
+
+	//while connection is open
+	while(1)
+	{
+		n = read(newsockfd,buffer,255);
+
+		if(n<0)
+		{
+			child_error("ERROR reading from socket");
+		}
+		if(n == 0)
+		{
+			child_error("Connection closed by client");
+		}
+		std::cout<<"Message from client " << users.back() << ": " << buffer << std::endl;
+
+		n = write(newsockfd,"I got your message", 18);
+	}
+}
+ */
 
 void print_server()
 {
@@ -269,12 +297,105 @@ int main(int argc, char *argv[])
     }
     while(more_commands == true);
 
-     //close connections using file descriptors
-     close(sockfd);
+
+
+    //close connections using file descriptors
+    close(sockfd);
     return 0;
 }
 
+void clientFile(std::string name, char a)
+{
+    //check if the file is writeLocked
+    if (std::find(users.begin(), users.end(), name) != writeVector.end())
+    {
+        //users cannot read or write when writeLocked
+        std::out << "File: " << name << "cannot be accessed at this time." << std::endl;
+    }
+        //check if the file is readLocked
+    else if (std::find(users.begin(), users.end(), name) != readVector.end())
+    {
+        //Allow reading access if readLocked
+        if (a.compare("r") == 0)
+        {
+            //call readFile Function
+        }
+        else if (a.compare("w") == 0)
+        {
+            //Users cannot write when readLocked
+            std::out << "File: " << name << "cannot be accessed at this time." << std::endl;
+        }
+            //error when char a is not "r" or "w"
+        else
+        {
+            error("ERROR command not valid");
+        }
+    }
+        //if the file is not readLocked or writeLocked
+    else
+    {
+        //Allow reading access
+        if (a.compare("r") == 0)
+        {
+            //call readFile Function
+        }
+            //Allow writing access
+        else if (a.compare("w") == 0)
+        {
+            //call writeFile Function
+        }
+            //error when char a is not "r" or "w"
+        else
+        {
+            error("ERROR command not valid");
+        }
+    }
+}
 
+void readfile(std::string name)
+{
+    //vector for lines of textfile
+    std::vector<std::string> fileLines;
+    std::ifstream file(name);
+    std::string line;
 
+    //store the lines into vector fileLines
+    while (std::getline(file, line))
+    {
+        std::string nLine;
+        nLine = line + "\n";
+        fileLines.push_back(nLine);
+    }
 
+    //reverse the vector
+    std::vector<std::string> saveLines(fileLines.rbegin(), fileLines.rend());
+
+    //save vector into file name
+    ???
+}
+
+void writefile(std::string name)
+{
+    //vector for lines of textfile
+    std::vector<std::string> fileLines;
+    std::ifstream file(name);
+    std::string line;
+
+    //allow user to edit file
+    ???
+
+    //store the lines into vector fileLines
+    while (std::getline(file, line))
+    {
+        std::string nLine;
+        nLine = line + "\n";
+        fileLines.push_back(nLine);
+    }
+
+    //reverse the vector
+    std::vector<std::string> saveLines(fileLines.rbegin(), fileLines.rend());
+
+    //save vector into file name
+    ???
+}
 
