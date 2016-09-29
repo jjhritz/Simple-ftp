@@ -157,6 +157,10 @@ int write_server(std::string message)
     return n;
 }
 
+//TODO: Function write_file_to_server()
+
+//TODO: Fuction read_file_from_server()
+
 int main(int argc, char *argv[])
 {
     //if too few/many arguements are provided
@@ -230,9 +234,6 @@ int main(int argc, char *argv[])
     if (connect(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0)
         error("ERROR connecting");
 
-    //After a connection a client has successfully connected to the server
-    //initialize the buffer using the bzero() function
-    bzero(buffer, 256);
 
     //both the server can read and write after a connection has been established.
     //everything written by the client will be read by the server, and everything written by the server will be read by the client.
@@ -280,7 +281,6 @@ int main(int argc, char *argv[])
     //while the user has commands, send requests and receive responses
     do
     {
-
         std::string input;
 
         //prompt for input
@@ -340,6 +340,8 @@ int main(int argc, char *argv[])
     close(sockfd);
     return 0;
 }
+
+//TODO: Clean up and finish Spyke's code.  Remove code implemented on server-side
 
 void clientFile(std::string name, char a)
 {

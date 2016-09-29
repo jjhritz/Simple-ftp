@@ -70,6 +70,8 @@ std::vector<std::string> users;
 //vector for the child pids
 std::vector<int> child_pids;
 
+//TODO: Set up shared memory vectors for read_lock and write_lock using Boost
+
 //number of active children
 int active_children = 0;
 
@@ -80,8 +82,6 @@ int pid;
 //sockfd and newsockfd are file descriptors,These two variables store the values returned by the socket system call and the accept system call.
 //portno stores the port number on which the server accepts connections.
 int sockfd, newsockfd, portno;
-
-
 
 //This function is called when a system call fails. It displays a message about the error on stderr and then aborts the program.
 void error(const char *msg)
@@ -97,7 +97,7 @@ void child_error(const char *msg)
     _exit(0);
 }
 
-std::string read_client()
+std::string client_read()
 {
     //Improved implementation of socket ready by Steve on StackOverflow: http://stackoverflow.com/questions/18670807/sending-and-receiving-stdstring-over-socket
     // create the buffer with space for the data
@@ -171,21 +171,113 @@ int client_write(std::string message)
     return n;
 }
 
+bool access_request(std::string file_name, std::string mode)
+{
+    bool access = false;
+
+    //check if file is write-locked
+    //if file_name is in write_lock
+        //Inform client file is write-locked
+        //access = false
+    //else if file_name is in read_lock && mode is 'w'
+        //Inform client file is read-only
+    //else
+        //file is accessible
+
+    return access;
+}
+
+std::vector<std::string> parse_request(std::string request)
+{
+    std::vector<std::string> parsed_request;
+
+    //last three characters of request will be ',' ' ' and the mode ['r','w']
+    //add substring of request minus last 3 characters to parsed_request
+    //add substring of last character in request to parsed_request
+
+    return parsed_request;
+}
+
+void read_file_to_client(std::string file_name)
+{
+    std::vector<std::string> file_buffer;
+    std::string line;
+    //open file_stream
+
+    //read file into buffer
+    //while line is not EOF
+        //append line to file_buffer
+    //endwhile
+
+    //while file_buffer is not empty, write last line to client
+    //while file buffer is not empty
+        //write last element of file_buffer to socket
+    //endwhile
+
+    //write EOF to client
+
+    //close file
+}
+
+void write_file_from_client(std::string file_name)
+{
+    std::vector<std::string> file_buffer;
+    std::string line;
+    //open file stream
+
+    //read file into buffer
+    //do
+        //read line from client
+        //if line is not EOF
+            //add line to file_buffer
+        //endif
+    //while line is not EOF
+
+    //for all line in file_buffer
+        //write line to file
+    //end for
+
+    //close file
+}
+
 void client_service()
 {
     int n;
-    std::string response;
+    std::string request;
+    std::string file_name;
+    std::string mode;
+
 
     //while connection is open
     while(1)
     {
         std::cout << "Waiting for request from client " << users.back() << std::endl;
 
-        response = read_client();
+        //get request from client
+        request = client_read();
+
+        //parse request
+        std::vector<std::string> parsed_request = parse_request(request);
+        file_name = parsed_request[0];
+        mode = parsed_request[1];
+
+        //check access for file
+        //if access is permitted && mode is r
+            //read_file_to_client()
+        //else if access is permitted && mode is w
+            //write_file_from_client()
+
+        //
+        /*
+         * Debug call-and-response connection test
+        std::cout << "Waiting for request from client " << users.back() << std::endl;
+
+        response = client_read();
 
         std::cout << "Message from client " << users.back() << ": " << response << std::endl;
 
         n = client_write("I got your message");
+         */
     }
 
     //_exit(0);
@@ -358,7 +450,7 @@ int main(int argc, char *argv[])
 
         //READ/WRITE 1
         //read client number from client
-        std::string client_data = read_client();
+        std::string client_data = client_read();
 
         std::cout << "Incoming client: " << client_data << std::endl;
 
