@@ -52,6 +52,7 @@
 #include <sstream>
 #include <fstream>
 #include <thread>
+#include <mutex>
 
 //contains definitions of a number of data types used in system calls
 #include <sys/types.h>
@@ -65,6 +66,8 @@
 //contains functions for checking the state of child processes
 #include <sys/wait.h>
 
+#define DISCONNECTED "#ER9c!"
+
 enum t_lock_state
 {
     LOCKED = 0,
@@ -76,6 +79,8 @@ std::vector<std::string> users;
 
 //vector for the child pids
 std::vector<int> child_pids;
+
+std::vector<std::thread> threads;
 
 //TODO: Set up shared memory vectors for read_lock and write_lock using threads
 std::vector<std::string> read_lock;
@@ -104,10 +109,9 @@ void error(const char *msg)
 void child_error(const char *msg)
 {
     perror(msg);
-    _exit(0);
+    //_exit(0);
 }
 
-//TODO: Rework for threaded mode
 std::string client_read()
 {
     //Improved implementation of socket ready by Steve on StackOverflow: http://stackoverflow.com/questions/18670807/sending-and-receiving-stdstring-over-socket
@@ -116,20 +120,20 @@ std::string client_read()
     std::vector<char> buffer(MAX_BUF_LENGTH);
     std::string rcv;
     int bytesReceived = 0;
+
     do
     {
         bytesReceived = recv(newsockfd, buffer.data(), buffer.size(), 0);
         // append string from buffer.
         if ( bytesReceived == -1 )
         {
-            if(pid == 0)
-            {
-                child_error("ERROR on socket read.");
-            }
-            else
-            {
-                error("ERROR on socket read.");
-            }
+            child_error("ERROR on socket read.");
+            return DISCONNECTED;
+        }
+        else if(bytesReceived == 0)
+        {
+            child_error("Client disconnected.");
+            return DISCONNECTED;
         }
         else
         {
@@ -162,7 +166,6 @@ std::string client_read()
      */
 }
 
-//TODO: Rework for threaded mode
 int client_write(std::string message)
 {
     int n;
@@ -170,14 +173,7 @@ int client_write(std::string message)
 
     if(n < 1)
     {
-        if(pid == 0)
-        {
-            child_error("ERROR on socket write.");
-        }
-        else
-        {
-            error("ERROR on socket write.");
-        }
+        child_error("ERROR on socket write.");
     }
 
     return n;
@@ -252,7 +248,8 @@ void read_file_to_client(std::string file_name)
     {
         //read file into buffer
         //while line is not EOF
-        while (std::getline(file, line)) {
+        while (std::getline(file, line))
+        {
             //getline removes the newline character, so add it back in
             line = line + "\n";
             //add line to file_buffer
@@ -262,7 +259,8 @@ void read_file_to_client(std::string file_name)
 
         //while file_buffer is not empty, write last line to client
         //while file_buffer is not empty
-        while (!file_buffer.empty()) {
+        while (!file_buffer.empty())
+        {
             //get the last line in the buffer
             line = file_buffer.back();
             //remove the last line from the buffer
@@ -328,9 +326,12 @@ void write_file_from_client(std::string file_name)
         do {
             //read line from client
             line = client_read();
+
             line_is_eof = is_eof(line);
+
             //if line is not EOF
-            if (!line_is_eof) {
+            if (!line_is_eof)
+            {
                 //add line to file_buffer
                 file_buffer.push_back(line);
             }
@@ -370,6 +371,11 @@ void client_service()
         //get request from client
         request = client_read();
 
+        if(request.compare(DISCONNECTED) == 0)
+        {
+            break;
+        }
+
         //parse request
         std::vector<std::string> parsed_request = parse_request(request);
         file_name = parsed_request[0];
@@ -393,7 +399,6 @@ void client_service()
             write_file_from_client(file_name);
         }
 
-
         /*
          * Debug call-and-response connection test
         std::cout << "Waiting for request from client " << users.back() << std::endl;
@@ -406,10 +411,13 @@ void client_service()
          */
     }
 
-    //_exit(0);
+    std::cout << "Exiting thread." << std::endl;
+    //exit thread
 }
 
-void check_children()
+/*
+ * No longer needed now that the program uses threads
+ * void check_children()
 {
     //holds the state returned by waitpid()
     pid_t state;
@@ -458,6 +466,7 @@ void check_children()
         }
     }
 }
+*/
 
 int main(int argc, char *argv[])
 {
@@ -544,10 +553,6 @@ int main(int argc, char *argv[])
 
     while(1)
     {
-        //get state of child processes
-        std::cout << "Checking state of child processes..." << std::endl;
-        check_children();
-
         //listen system call allows the process to listen on the socket for connections.
         //The first argument is the socket file descriptor, and second is number of connections that can be waiting while the process is handling a particular connection.
         std::cout << "Listening for connections..." << std::endl;
@@ -659,7 +664,12 @@ int main(int argc, char *argv[])
                 users.push_back(client_data);
                 std::cout << "Client " << users.back() << " now registered." << std::endl;
 
+                active_children++;
+
                 //split into new thread
+                threads.push_back(std::thread(client_service()));
+
+
 
                 /*
                  * //Writes removed due to unexplained zerg-rush

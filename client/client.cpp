@@ -163,13 +163,23 @@ int write_server(std::string message)
 std::vector<std::string> parse_request(std::string request)
 {
     std::vector<std::string> parsed_request;
+    std::string file_name;
+    std::string mode;
 
     //last three characters of request will be ',' ' ' and the mode ['r','w']
-    //add substring of request minus last 3 characters to parsed_request
-    //add substring of last character in request to parsed_request
+    //create substring of request minus last 3 characters to get file_name
+    file_name = request.substr(0, request.length() - 3);
+
+    //create substring of last character in request to get mode
+    mode = request.substr(request.length() - 2, 1);
+
+    //add file_name and mode to parsed_request
+    parsed_request.push_back(file_name);
+    parsed_request.push_back(mode);
 
     return parsed_request;
 }
+
 bool access_request(std::string)
 {
     std::string response;
