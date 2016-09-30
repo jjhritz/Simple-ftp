@@ -1,19 +1,21 @@
 //Name of Authros: John Hritz & Santiago Quinio
 //Course Number and Name: CSE434, Computer Networks
 //Semester: Fall 2016
-//Project Part 1
-//Time Spent: 4 hours 
+//Project Part 2
+//Time Spent: 4 hours
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <vector>
+#include <string>
 #include <algorithm>
 #include <iostream>
 #include <ios>
 #include <sstream>
 #include <climits>
+#include <fstream>
 
 //contains definitions of a number of data types used in system calls
 #include <sys/types.h>
@@ -26,6 +28,11 @@
 //netdb.h defines the structure hostent,
 #include <netdb.h>
 
+enum t_lock_state
+{
+    LOCKED = 0,
+    UNLOCKED = 1
+};
 
 //variable declarations
 
@@ -50,12 +57,11 @@ struct  hostent
 */
 struct hostent *server;
 
-char buffer[256];
 
 void error(const char *msg)
 {
-	perror(msg);
-	exit(0);
+    perror(msg);
+    exit(0);
 }
 
 /*
@@ -63,7 +69,7 @@ void client_service()
 {
 	int n;
 	char buffer[256];
-	
+
 	//while connection is open
 	while(1)
 	{
@@ -78,21 +84,51 @@ void client_service()
 			child_error("Connection closed by client");
 		}
 		std::cout<<"Message from client " << users.back() << ": " << buffer << std::endl;
-	
+
 		n = write(newsockfd,"I got your message", 18);
 	}
 }
  */
 
-void print_server()
+void print_server(std::string message)
 {
     //print server response
-    std::cout << "Server says: " << std::endl;
-    printf("%s\n", buffer);
+    std::cout << "Server says: " << message << std::endl;
 }
 
-void read_server()
+std::string read_server()
 {
+    //Improved implementation of socket ready by Steve on StackOverflow: http://stackoverflow.com/questions/18670807/sending-and-receiving-stdstring-over-socket
+    // create the buffer with space for the data
+    const unsigned int MAX_BUF_LENGTH = 4096;
+    std::vector<char> buffer(MAX_BUF_LENGTH);
+    std::string rcv;
+    int bytesReceived = 0;
+    do
+    {
+        bytesReceived = recv(sockfd, buffer.data(), buffer.size(), 0);
+        // append string from buffer.
+        if ( bytesReceived == -1 )
+        {
+            error("ERROR on socket read.");
+        }
+        else if(bytesReceived == 0)
+        {
+            error("ERROR You have been disconnected by the server.");
+        }
+        else
+        {
+            rcv.append( buffer.cbegin(), buffer.cend() );
+        }
+    }
+    while ( bytesReceived == MAX_BUF_LENGTH );
+    // At this point we have the available data (which may not be a complete
+    // application level message).
+
+    return rcv;
+
+    /*
+     * Legacy implementation
     bzero(buffer, 256);
     n = read(sockfd, buffer, 255);
 
@@ -107,6 +143,103 @@ void read_server()
     }
 
     print_server();
+    */
+}
+
+int write_server(std::string message)
+{
+    int n;
+    n = write(sockfd, message.c_str(), strlen(message.c_str()));
+
+    //check of the write function was successful or not
+    if (n < 0)
+    {
+        error("ERROR writing to socket");
+    }
+
+    return n;
+}
+
+std::vector<std::string> parse_request(std::string request)
+{
+    std::vector<std::string> parsed_request;
+
+    //last three characters of request will be ',' ' ' and the mode ['r','w']
+    //add substring of request minus last 3 characters to parsed_request
+    //add substring of last character in request to parsed_request
+
+    return parsed_request;
+}
+bool access_request(std::string mode)
+{
+    std::string input;
+    t_lock_state lock_state;
+    bool access = false;
+
+    //get command from stdin, store in input
+    //send command to server
+    //get LOCKED/UNLOCKED
+    //convert to integer
+    //if lock_state is LOCKED && mode is r
+        //print file is write-locked
+    //else if lock_state is LOCKED && mode is w
+        //print file is read-only
+    //else if file is UNLOCKED, file can be accessed
+        //access = true
+
+    return access;
+}
+
+//TODO: Clean up and finish Spyke's code.  Remove code implemented on server-side
+
+//TODO: Function write_file_to_server()
+void write_file_to_server(std::string file_name)
+{
+    //vector for lines of textfile
+    std::vector<std::string> file_buffer;
+    std::ifstream file(file_name);
+    std::string line;
+
+    //read file into file_buffer
+    while (std::getline(file, line))
+    {
+        //getline removes the newline character, so add it back in
+        line = line + "\n";
+        file_buffer.push_back(line);
+    }
+
+    //while file_buffer is not empty, write last line to server
+    //while file buffer is not empty
+        //write last element of file_buffer to socket
+    //endwhile
+
+    //write EOF to server
+
+    //close file
+}
+
+//TODO: Function read_file_from_server()
+void read_file_from_server(std::string file_name)
+{
+    //vector for lines of textfile
+    std::vector<std::string> file_buffer;
+    std::ifstream file(file_name);
+    std::string line;
+
+
+    //read file into buffer
+    //do
+        //read line from client
+        //if line is not EOF
+            //add line to file_buffer
+        //endif
+    //while line is not EOF
+
+    //for all line in file_buffer
+        //write line to file
+    //end for
+
+    //close file
 }
 
 int main(int argc, char *argv[])
@@ -134,7 +267,6 @@ int main(int argc, char *argv[])
     {
         error("ERROR: Ports numbered 1024 and below are reserved by the OS.");
     }
-
 
 
     //atoi() function can be used to convert port number from a string of digits to an integer, if your input is in the form of a string.
@@ -183,21 +315,15 @@ int main(int argc, char *argv[])
     if (connect(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0)
         error("ERROR connecting");
 
-    //After a connection a client has successfully connected to the server
-    //initialize the buffer using the bzero() function
-    bzero(buffer, 256);
 
     //both the server can read and write after a connection has been established.
     //everything written by the client will be read by the server, and everything written by the server will be read by the client.
 
     //READ/WRITE 1
     //write from the argv[2] into the socket to send the client number to the serve
-    n = write(sockfd, argv[2], strlen(argv[2]));
+    n = write_server(argv[2]);
 
-    //check of the write function was successful or not
-    if (n < 0)
-        error("ERROR writing to socket");
-
+    /*
     //Check if number of clients is maximum
     //std::cout << "Checking if server will accept more clients..." << std::endl;
 
@@ -221,12 +347,14 @@ int main(int argc, char *argv[])
     //Should say "Client ID already online"
     //Or "You have been registered."
     //read_server();
+     */
 
     //READ/WRITE 5
     //check if server closed connection
     //should return 0
     //Or say "Ready for requests."
-    read_server();
+    std::string server_data = read_server();
+    print_server(server_data);
 
     bool more_commands = false;
     bool input_valid = false;
@@ -234,26 +362,20 @@ int main(int argc, char *argv[])
     //while the user has commands, send requests and receive responses
     do
     {
-        //empty buffer
-        bzero(buffer, 256);
+        std::string input;
 
         //prompt for input
         std::cout << "Your message: " << std::endl;
 
         //getinput
-        fgets(buffer,255,stdin);
+        getline(std::cin, input);
 
         //send request
-        n = write(sockfd,buffer,strlen(buffer));
-
-        //check of the write function was successful or not
-        if (n < 0)
-            error("ERROR writing to socket");
-
-        bzero(buffer, 256);
+        write_server(input);
 
         //get response
-        read_server();
+        std::string server_data = read_server();
+        print_server(server_data);
 
         do
         {
@@ -261,7 +383,7 @@ int main(int argc, char *argv[])
             //prompt for more commands
             std::cout << "Another command? y/n" << std::endl;
 
-            std::string input;
+
 
             std::cin >> input;
 
@@ -294,10 +416,15 @@ int main(int argc, char *argv[])
     }
     while(more_commands == true);
 
-     //close connections using file descriptors
-     close(sockfd);
+
+    //close connections using file descriptors
+    close(sockfd);
     return 0;
 }
+
+
+
+
 
 
 
