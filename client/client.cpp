@@ -240,7 +240,7 @@ void write_file_to_server(std::string file_name)
 }
 
 //TODO: Function read_file_from_server()
-void write_file_from_server(std::string file_name)
+void read_file_from_server(std::string file_name)
 {
     std::vector<std::string> file_buffer;
     std::string line;
