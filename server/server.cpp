@@ -82,9 +82,11 @@ std::vector<int> child_pids;
 
 std::vector<std::thread> threads;
 
-//TODO: Set up shared memory vectors for read_lock and write_lock using threads
 std::vector<std::string> read_lock;
 std::vector<std::string> write_lock;
+
+//mutex to avoid race conditions
+std::mutex mtx;
 
 
 //number of active children
@@ -94,9 +96,7 @@ int active_children = 0;
 int n;
 int pid;
 
-//sockfd and newsockfd are file descriptors,These two variables store the values returned by the socket system call and the accept system call.
-//portno stores the port number on which the server accepts connections.
-int sockfd, newsockfd, portno;
+
 
 //This function is called when a system call fails. It displays a message about the error on stderr and then aborts the program.
 void error(const char *msg)
@@ -112,7 +112,7 @@ void child_error(const char *msg)
     //_exit(0);
 }
 
-std::string client_read()
+std::string client_read(int newsockfd)
 {
     //Improved implementation of socket ready by Steve on StackOverflow: http://stackoverflow.com/questions/18670807/sending-and-receiving-stdstring-over-socket
     // create the buffer with space for the data
@@ -166,7 +166,7 @@ std::string client_read()
      */
 }
 
-int client_write(std::string message)
+int client_write(std::string message, int newsockfd)
 {
     int n;
     n = write(newsockfd, message.c_str(), strlen(message.c_str()));
@@ -179,18 +179,20 @@ int client_write(std::string message)
     return n;
 }
 
-bool access_request(std::string file_name, std::string mode)
+bool access_request(std::string file_name, std::string mode, int newsockfd)
 {
     bool access = false;
     t_lock_state lock_state;
 
     //check if file is write-locked
     //if file_name is in write_lock
-    if(std::find(write_lock.begin(), write_lock.end(), file_name) != write_lock.end()) {
+    std::lock_guard<std::mutex> lck (mtx);
+    if(std::find(write_lock.begin(), write_lock.end(), file_name) != write_lock.end())
+    {
         std::cout << file_name << " is write-locked." << std::endl;
         //send lock_state LOCKED
         lock_state = LOCKED;
-        client_write(std::to_string(lock_state));
+        client_write(std::to_string(lock_state), newsockfd);
     }
     //check if file is read-locked
     //else if file_name is in read_lock && mode is 'w'
@@ -200,16 +202,16 @@ bool access_request(std::string file_name, std::string mode)
         std::cout << file_name << " is read-locked." << std::endl;
         //send lock_state LOCKED
         lock_state = LOCKED;
-        client_write(std::to_string(lock_state));
+        client_write(std::to_string(lock_state), newsockfd);
     }
     //else, file is not locked
     else
     {
         lock_state = UNLOCKED;
-        client_write(std::to_string(lock_state));
+        client_write(std::to_string(lock_state), newsockfd);
         access = true;
     }
-
+    lck.~lock_guard();
     return access;
 }
 
@@ -233,7 +235,7 @@ std::vector<std::string> parse_request(std::string request)
     return parsed_request;
 }
 
-void read_file_to_client(std::string file_name)
+void read_file_to_client(std::string file_name, int newsockfd)
 {
     std::vector<std::string> file_buffer;
     std::string line;
@@ -266,12 +268,12 @@ void read_file_to_client(std::string file_name)
             //remove the last line from the buffer
             file_buffer.pop_back();
             //write line to socket
-            client_write(line);
+            client_write(line, newsockfd);
         }
         //endwhile
 
         //write EOF to client
-        client_write(std::to_string(EOF));
+        client_write(std::to_string(EOF), newsockfd);
 
         //close file
         file.close();
@@ -279,10 +281,10 @@ void read_file_to_client(std::string file_name)
     //if file is not open
     else
     {
-        //Write file could not be opened to clien
-        client_write("File could not be opened on server.");
+        //Write file could not be opened to client
+        client_write("File could not be opened on server.", newsockfd);
         //write EOF to client
-        client_write(std::to_string(EOF));
+        client_write(std::to_string(EOF), newsockfd);
     }
 
     //remove file from read_lock
@@ -308,7 +310,7 @@ bool is_eof(std::string line)
     return is_eof;
 }
 
-void write_file_from_client(std::string file_name)
+void write_file_from_client(std::string file_name, int newsockfd)
 {
     std::vector<std::string> file_buffer;
     std::string line;
@@ -325,7 +327,7 @@ void write_file_from_client(std::string file_name)
         //read file into buffer
         do {
             //read line from client
-            line = client_read();
+            line = client_read(newsockfd);
 
             line_is_eof = is_eof(line);
 
@@ -354,7 +356,7 @@ void write_file_from_client(std::string file_name)
     write_lock.erase(std::remove(write_lock.begin(), write_lock.end(), file_name), write_lock.end());
 }
 
-void client_service()
+void client_service(int newsockfd)
 {
     int n;
     std::string request;
@@ -369,7 +371,7 @@ void client_service()
         std::cout << "Waiting for request from client " << users.back() << std::endl;
 
         //get request from client
-        request = client_read();
+        request = client_read(newsockfd);
 
         if(request.compare(DISCONNECTED) == 0)
         {
@@ -382,21 +384,21 @@ void client_service()
         mode = parsed_request[1];
 
         //check access for file
-        access = access_request(file_name, mode);
+        access = access_request(file_name, mode, newsockfd);
 
         //if access is permitted && mode is r
         if(access == true
            && mode.compare("r") == 0)
         {
             //read file_name to client
-            read_file_to_client(file_name);
+            read_file_to_client(file_name, newsockfd);
         }
         //else if access is permitted && mode is w
         if(access == true
            && mode.compare("w") == 0)
         {
             //write file_name from client
-            write_file_from_client(file_name);
+            write_file_from_client(file_name, newsockfd);
         }
 
         /*
@@ -487,6 +489,10 @@ int main(int argc, char *argv[])
     {
         error("ERROR: Ports numbered 1024 and below are reserved by the OS.");
     }
+
+    //sockfd and newsockfd are file descriptors,These two variables store the values returned by the socket system call and the accept system call.
+    //portno stores the port number on which the server accepts connections.
+    int sockfd, newsockfd, portno;
 
     //clilen stores the size of the address of the client. This is required for the accept system call.
     socklen_t clilen;
@@ -579,7 +585,7 @@ int main(int argc, char *argv[])
 
         //READ/WRITE 1
         //read client number from client
-        std::string client_data = client_read();
+        std::string client_data = client_read(newsockfd);
 
         std::cout << "Incoming client: " << client_data << std::endl;
 
@@ -664,10 +670,12 @@ int main(int argc, char *argv[])
                 users.push_back(client_data);
                 std::cout << "Client " << users.back() << " now registered." << std::endl;
 
+                std::lock_guard<std::mutex> lck (mtx);
                 active_children++;
 
                 //split into new thread
-                threads.push_back(std::thread(client_service()));
+                threads.push_back(std::thread(client_service(newsockfd)));
+                lck.~lock_guard();
 
 
 
