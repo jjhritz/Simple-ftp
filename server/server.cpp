@@ -77,7 +77,10 @@ std::vector<std::string> users;
 //vector for the child pids
 std::vector<int> child_pids;
 
-//TODO: Set up shared memory vectors for read_lock and write_lock using Boost
+//TODO: Set up shared memory vectors for read_lock and write_lock using threads
+std::vector<std::string> read_lock;
+std::vector<std::string> write_lock;
+
 
 //number of active children
 int active_children = 0;
@@ -104,6 +107,7 @@ void child_error(const char *msg)
     _exit(0);
 }
 
+//TODO: Rework for threaded mode
 std::string client_read()
 {
     //Improved implementation of socket ready by Steve on StackOverflow: http://stackoverflow.com/questions/18670807/sending-and-receiving-stdstring-over-socket
@@ -158,6 +162,7 @@ std::string client_read()
      */
 }
 
+//TODO: Rework for threaded mode
 int client_write(std::string message)
 {
     int n;
@@ -181,15 +186,33 @@ int client_write(std::string message)
 bool access_request(std::string file_name, std::string mode)
 {
     bool access = false;
+    t_lock_state lock_state;
 
     //check if file is write-locked
     //if file_name is in write_lock
+    if(std::find(write_lock.begin(), write_lock.end(), file_name) != write_lock.end()) {
+        std::cout << file_name << " is write-locked." << std::endl;
         //send lock_state LOCKED
+        lock_state = LOCKED;
+        client_write(std::to_string(lock_state));
+    }
+    //check if file is read-locked
     //else if file_name is in read_lock && mode is 'w'
+    else if(std::find(read_lock.begin(), read_lock.end(), file_name) != read_lock.end()
+            && mode.compare("w") == 0)
+    {
+        std::cout << file_name << " is read-locked." << std::endl;
         //send lock_state LOCKED
-    //else
-        //send lock_state UNLOCKED
-        //access = true
+        lock_state = LOCKED;
+        client_write(std::to_string(lock_state));
+    }
+    //else, file is not locked
+    else
+    {
+        lock_state = UNLOCKED;
+        client_write(std::to_string(lock_state));
+        access = true;
+    }
 
     return access;
 }
@@ -197,10 +220,19 @@ bool access_request(std::string file_name, std::string mode)
 std::vector<std::string> parse_request(std::string request)
 {
     std::vector<std::string> parsed_request;
+    std::string file_name;
+    std::string mode;
 
     //last three characters of request will be ',' ' ' and the mode ['r','w']
-    //add substring of request minus last 3 characters to parsed_request
-    //add substring of last character in request to parsed_request
+    //create substring of request minus last 3 characters to get file_name
+    file_name = request.substr(0, request.length() - 3);
+
+    //create substring of last character in request to get mode
+    mode = request.substr(request.length() - 2, 1);
+
+    //add file_name and mode to parsed_request
+    parsed_request.push_back(file_name);
+    parsed_request.push_back(mode);
 
     return parsed_request;
 }
@@ -211,42 +243,91 @@ void read_file_to_client(std::string file_name)
     std::string line;
 
     //add file to read_lock
+    read_lock.push_back(file_name);
 
     //open file_stream
+    std::ifstream file(file_name);
 
     //read file into buffer
     //while line is not EOF
-        //append line + "\n" to file_buffer
+    while (std::getline(file, line))
+    {
+        //getline removes the newline character, so add it back in
+        line = line + "\n";
+        //add line to file_buffer
+        file_buffer.push_back(line);
+    }
     //endwhile
 
     //while file_buffer is not empty, write last line to client
-    //while file buffer is not empty
-        //write last element of file_buffer to socket
+    //while file_buffer is not empty
+    while(!file_buffer.empty())
+    {
+        //get the last line in the buffer
+        line = file_buffer.back();
+        //remove the last line from the buffer
+        file_buffer.pop_back();
+        //write line to socket
+        client_write(line);
+    }
     //endwhile
 
     //write EOF to client
+    client_write(std::to_string(EOF));
 
     //close file
+    file.close();
 
     //remove file from read_lock
+    read_lock.erase(std::remove(read_lock.begin(), read_lock.end(), file_name), read_lock.end());
+}
+
+bool is_eof(std::string line)
+{
+    bool is_eof = false;
+
+    try
+    {
+        int val = std::stoi(line);
+        if(val == EOF)
+        {
+            is_eof = true;
+        }
+    }
+    catch (const std::invalid_argument& ia) {}
+
+    catch (const std::out_of_range& oor) {}
+
+    return is_eof;
 }
 
 void write_file_from_client(std::string file_name)
 {
     std::vector<std::string> file_buffer;
     std::string line;
+    bool line_is_eof = false;
 
     //add file to write_lock
+    write_lock.push_back(file_name);
 
     //open file stream
+    std::ofstream file(file_name);
 
     //read file into buffer
-    //do
+    do
+    {
         //read line from client
+        line = client_read();
+        line_is_eof = is_eof(line);
         //if line is not EOF
+        if(!line_is_eof)
+        {
             //add line to file_buffer
+            file_buffer.push_back(line);
+        }
         //endif
-    //while line is not EOF
+    }
+    while(!line_is_eof);
 
     //for all line in file_buffer
         //write line to file
@@ -255,6 +336,7 @@ void write_file_from_client(std::string file_name)
     //close file
 
     //remove file from write lock
+    write_lock.erase(std::remove(write_lock.begin(), write_lock.end(), file_name), write_lock.end());
 }
 
 void client_service()
