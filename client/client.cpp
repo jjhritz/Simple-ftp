@@ -176,12 +176,10 @@ bool access_request(std::string)
     t_lock_state lock_state;
     bool access = false;
 
-
-    //send input to server
-
     //read LOCKED/UNLOCKED (0 or 1) from server, store in response
-    //convert response to integer, store in lock_state
-	/*if(response == 0)
+	
+    convert response to integer, store in lock_state
+	if(response == 0)
 	{
 		lock_state = 0;
 	}
@@ -192,13 +190,13 @@ bool access_request(std::string)
 	else //non-valid response
 	{
 		std::cout << "response not valid" << std::endl;
-	}*/
+	}
     //if lock_state is LOCKED && parsed_request[1] is r
-	/*else if (lock_state == 0 && parsed_request[1].compare("r") == 0)
+	else if (lock_state == 0 && parsed_request[1].compare("r") == 0)
 	{
         	//print file is write-locked
 		std::cout << "file is write-locked" << std::endl
-	}*/
+	}
     //else if lock_state is LOCKED && parsed_request[1] is w
         /*else if (lock_state == 0 && parsed_request[1].compare("w") == 0)
 	{
@@ -402,6 +400,7 @@ int main(int argc, char *argv[])
         std::cin.ignore(INT_MAX, '\n');
 
 	//send input to server
+	write_server(input);
 	    
         //parse request for internal use
         std::vector<std::string> parsed_request = parse_request(input);
