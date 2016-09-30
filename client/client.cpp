@@ -199,22 +199,32 @@ void write_file_to_server(std::string file_name)
     std::ifstream file(file_name);
     std::string line;
 
-    //read file into file_buffer
-    while (std::getline(file, line))
+    //if file is open, send the file
+    if(file.is_open())
     {
-        //getline removes the newline character, so add it back in
-        line = line + "\n";
-        file_buffer.push_back(line);
+        //read file into file_buffer
+        while (std::getline(file, line))
+        {
+            //getline removes the newline character, so add it back in
+            line = line + "\n";
+            file_buffer.push_back(line);
+        }
+
+        //while file_buffer is not empty, write last line to server
+        //while file buffer is not empty
+            //write last element of file_buffer to socket
+        //endwhile
+
+        //write EOF to server
+
+        //close file
     }
-
-    //while file_buffer is not empty, write last line to server
-    //while file buffer is not empty
-        //write last element of file_buffer to socket
-    //endwhile
-
-    //write EOF to server
-
-    //close file
+    //if file could not be opened
+    else
+    {
+        //write "file could not be opened on client" to server
+        //write EOF to server
+    }
 }
 
 //TODO: Function read_file_from_server()
@@ -234,11 +244,20 @@ void read_file_from_server(std::string file_name)
         //endif
     //while line is not EOF
 
-    //for all line in file_buffer
-        //write line to file
-    //end for
+    //if file is open, write file_buffer into file
+    if(file.is_open())
+    {
+        //for all line in file_buffer
+            //write line to file
+        //end for
 
-    //close file
+        //close file
+    }
+    //if file could not be opened
+    else
+    {
+        std::cout << "Destination file " << file_name << " could not be opened." << std::endl;
+    }
 }
 
 int main(int argc, char *argv[])
