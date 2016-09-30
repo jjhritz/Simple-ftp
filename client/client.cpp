@@ -170,26 +170,27 @@ std::vector<std::string> parse_request(std::string request)
 
     return parsed_request;
 }
-bool access_request(std::string)
+bool access_request(std::string mode)
 {
-    std::string response;
+    std::string input;
     t_lock_state lock_state;
     bool access = false;
 
-
-    //send input to server
-
-    //read LOCKED/UNLOCKED (0 or 1) from server, store in response
-    //convert response to integer, store in lock_state
-    //if lock_state is LOCKED && parsed_request[1] is r
+    //get command from stdin, store in input
+    //send command to server
+    //get LOCKED/UNLOCKED
+    //convert to integer
+    //if lock_state is LOCKED && mode is r
         //print file is write-locked
-    //else if lock_state is LOCKED && parsed_request[1] is w
+    //else if lock_state is LOCKED && mode is w
         //print file is read-only
     //else if file is UNLOCKED, file can be accessed
         //access = true
 
     return access;
 }
+
+//TODO: Clean up and finish Spyke's code.  Remove code implemented on server-side
 
 //TODO: Function write_file_to_server()
 void write_file_to_server(std::string file_name)
@@ -199,32 +200,22 @@ void write_file_to_server(std::string file_name)
     std::ifstream file(file_name);
     std::string line;
 
-    //if file is open, send the file
-    if(file.is_open())
+    //read file into file_buffer
+    while (std::getline(file, line))
     {
-        //read file into file_buffer
-        while (std::getline(file, line))
-        {
-            //getline removes the newline character, so add it back in
-            line = line + "\n";
-            file_buffer.push_back(line);
-        }
-
-        //while file_buffer is not empty, write last line to server
-        //while file buffer is not empty
-            //write last element of file_buffer to socket
-        //endwhile
-
-        //write EOF to server
-
-        //close file
+        //getline removes the newline character, so add it back in
+        line = line + "\n";
+        file_buffer.push_back(line);
     }
-    //if file could not be opened
-    else
-    {
-        //write "file could not be opened on client" to server
-        //write EOF to server
-    }
+
+    //while file_buffer is not empty, write last line to server
+    //while file buffer is not empty
+        //write last element of file_buffer to socket
+    //endwhile
+
+    //write EOF to server
+
+    //close file
 }
 
 //TODO: Function read_file_from_server()
@@ -236,28 +227,19 @@ void read_file_from_server(std::string file_name)
     std::string line;
 
 
-    //read file into file_buffer
+    //read file into buffer
     //do
-        //read line from server
+        //read line from client
         //if line is not EOF
             //add line to file_buffer
         //endif
     //while line is not EOF
 
-    //if file is open, write file_buffer into file
-    if(file.is_open())
-    {
-        //for all line in file_buffer
-            //write line to file
-        //end for
+    //for all line in file_buffer
+        //write line to file
+    //end for
 
-        //close file
-    }
-    //if file could not be opened
-    else
-    {
-        std::cout << "Destination file " << file_name << " could not be opened." << std::endl;
-    }
+    //close file
 }
 
 int main(int argc, char *argv[])
@@ -381,35 +363,19 @@ int main(int argc, char *argv[])
     do
     {
         std::string input;
-        std::string file_name;
-        std::string mode;
-        bool access;
 
-        //get command from stdin, store in input
         //prompt for input
-        std::cout << "Your command: " << std::endl;
+        std::cout << "Your message: " << std::endl;
 
         //getinput
         getline(std::cin, input);
 
-        //clear the cin buffer
-        std::cin.clear();
-        std::cin.ignore(INT_MAX, '\n');
+        //send request
+        write_server(input);
 
-        //send input to server
-
-        //parse request for internal use
-        std::vector<std::string> parsed_request = parse_request(input);
-        file_name = parsed_request[0];
-        mode = parsed_request[1];
-
-        //request file access
-        access = access_request(mode);
-
-        //if access is true && mode is r
-            //read file file_name from server
-        //else if access is true && mode is w
-            //write file file_name to server
+        //get response
+        std::string server_data = read_server();
+        print_server(server_data);
 
         do
         {
@@ -418,7 +384,8 @@ int main(int argc, char *argv[])
             std::cout << "Another command? y/n" << std::endl;
 
 
-            getline(std::cin, input);
+
+            std::cin >> input;
 
             if(input.compare("y") == 0)
             {
@@ -454,3 +421,12 @@ int main(int argc, char *argv[])
     close(sockfd);
     return 0;
 }
+
+
+
+
+
+
+
+
+

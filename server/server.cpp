@@ -51,7 +51,6 @@
 #include <ios>
 #include <sstream>
 #include <fstream>
-#include <thread>
 
 //contains definitions of a number of data types used in system calls
 #include <sys/types.h>
@@ -348,6 +347,8 @@ void check_children()
             std::cout << current_child << " active child processes." << std::endl;
         }
     }
+
+
 }
 
 int main(int argc, char *argv[])
@@ -561,8 +562,7 @@ int main(int argc, char *argv[])
                 }
                  */
 
-                /*
-                 * legacy implementation of concurrency using Forck
+
                 pid = fork(); //Program spawns child process here
                 //fork() returns the process id (pid) of the child process to the parent and 0 to the child.
 
@@ -583,7 +583,6 @@ int main(int argc, char *argv[])
                     //increment number of child processes
                     active_children++;
                 }
-                 */
             }
         }
     }
