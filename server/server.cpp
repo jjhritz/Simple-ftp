@@ -359,6 +359,7 @@ void client_service()
     std::string request;
     std::string file_name;
     std::string mode;
+    bool access;
 
 
     //while connection is open
@@ -375,12 +376,24 @@ void client_service()
         mode = parsed_request[1];
 
         //check access for file
-        //if access is permitted && mode is r
-            //read_file_to_client()
-        //else if access is permitted && mode is w
-            //write_file_from_client()
+        access = access_request(file_name, mode);
 
-        //
+        //if access is permitted && mode is r
+        if(access == true
+           && mode.compare("r") == 0)
+        {
+            //read file_name to client
+            read_file_to_client(file_name);
+        }
+        //else if access is permitted && mode is w
+        if(access == true
+           && mode.compare("w") == 0)
+        {
+            //write file_name from client
+            write_file_from_client(file_name);
+        }
+
+
         /*
          * Debug call-and-response connection test
         std::cout << "Waiting for request from client " << users.back() << std::endl;
@@ -645,6 +658,8 @@ int main(int argc, char *argv[])
                 //add user to clients
                 users.push_back(client_data);
                 std::cout << "Client " << users.back() << " now registered." << std::endl;
+
+                //split into new thread
 
                 /*
                  * //Writes removed due to unexplained zerg-rush
