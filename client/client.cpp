@@ -240,28 +240,33 @@ void write_file_to_server(std::string file_name)
 }
 
 //TODO: Function read_file_from_server()
-void read_file_from_server(std::string file_name)
+void write_file_from_server(std::string file_name)
 {
-    //vector for lines of textfile
     std::vector<std::string> file_buffer;
-    std::ifstream file(file_name);
     std::string line;
+    bool line_is_eof = false;
 
+    //add file to write_lock
+    write_lock.push_back(file_name);
 
-    //read file into file_buffer
-    //do
-        //read line from server
+    //open file stream
+    std::ofstream file(file_name);
+
+    //read file into buffer
+    do
+    {
+        //read line from client
+        line = server_read();
+        line_is_eof = is_eof(line);
         //if line is not EOF
+        if(!line_is_eof)
+        {
             //add line to file_buffer
+            file_buffer.push_back(line);
+        }
         //endif
-    //while line is not EOF
-
-    //for all line in file_buffer
-        //write line to file
-    //end for
-
-    //close file
-}
+    }
+    while(!line_is_eof);
 
 int main(int argc, char *argv[])
 {
