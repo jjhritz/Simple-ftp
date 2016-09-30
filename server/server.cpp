@@ -64,6 +64,12 @@
 //contains functions for checking the state of child processes
 #include <sys/wait.h>
 
+enum t_lock_state
+{
+    LOCKED = 0,
+    UNLOCKED = 1
+};
+
 //vector for the user ids
 std::vector<std::string> users;
 
@@ -177,12 +183,12 @@ bool access_request(std::string file_name, std::string mode)
 
     //check if file is write-locked
     //if file_name is in write_lock
-        //Inform client file is write-locked
-        //access = false
+        //send lock_state LOCKED
     //else if file_name is in read_lock && mode is 'w'
-        //Inform client file is read-only
+        //send lock_state LOCKED
     //else
-        //file is accessible
+        //send lock_state UNLOCKED
+        //access = true
 
     return access;
 }
@@ -202,11 +208,14 @@ void read_file_to_client(std::string file_name)
 {
     std::vector<std::string> file_buffer;
     std::string line;
+
+    //add file to read_lock
+
     //open file_stream
 
     //read file into buffer
     //while line is not EOF
-        //append line to file_buffer
+        //append line + "\n" to file_buffer
     //endwhile
 
     //while file_buffer is not empty, write last line to client
@@ -217,12 +226,17 @@ void read_file_to_client(std::string file_name)
     //write EOF to client
 
     //close file
+
+    //remove file from read_lock
 }
 
 void write_file_from_client(std::string file_name)
 {
     std::vector<std::string> file_buffer;
     std::string line;
+
+    //add file to write_lock
+
     //open file stream
 
     //read file into buffer
@@ -238,6 +252,8 @@ void write_file_from_client(std::string file_name)
     //end for
 
     //close file
+
+    //remove file from write lock
 }
 
 void client_service()

@@ -28,6 +28,11 @@
 //netdb.h defines the structure hostent,
 #include <netdb.h>
 
+enum t_lock_state
+{
+    LOCKED = 0,
+    UNLOCKED = 1
+};
 
 //variable declarations
 
@@ -37,8 +42,6 @@ int sockfd, portno, n;
 
 //serv_addr will contain the address of the server
 struct sockaddr_in serv_addr;
-
-
 
 //variable server is a pointer to a structure of type hostent
 /*
@@ -157,9 +160,87 @@ int write_server(std::string message)
     return n;
 }
 
-//TODO: Function write_file_to_server()
+std::vector<std::string> parse_request(std::string request)
+{
+    std::vector<std::string> parsed_request;
 
-//TODO: Fuction read_file_from_server()
+    //last three characters of request will be ',' ' ' and the mode ['r','w']
+    //add substring of request minus last 3 characters to parsed_request
+    //add substring of last character in request to parsed_request
+
+    return parsed_request;
+}
+bool access_request(std::string mode)
+{
+    std::string input;
+    t_lock_state lock_state;
+    bool access = false;
+
+    //get command from stdin, store in input
+    //send command to server
+    //get LOCKED/UNLOCKED
+    //convert to integer
+    //if lock_state is LOCKED && mode is r
+        //print file is write-locked
+    //else if lock_state is LOCKED && mode is w
+        //print file is read-only
+    //else if file is UNLOCKED, file can be accessed
+        //access = true
+
+    return access;
+}
+
+//TODO: Clean up and finish Spyke's code.  Remove code implemented on server-side
+
+//TODO: Function write_file_to_server()
+void write_file_to_server(std::string file_name)
+{
+    //vector for lines of textfile
+    std::vector<std::string> file_buffer;
+    std::ifstream file(file_name);
+    std::string line;
+
+    //read file into file_buffer
+    while (std::getline(file, line))
+    {
+        //getline removes the newline character, so add it back in
+        line = line + "\n";
+        file_buffer.push_back(line);
+    }
+
+    //while file_buffer is not empty, write last line to server
+    //while file buffer is not empty
+        //write last element of file_buffer to socket
+    //endwhile
+
+    //write EOF to server
+
+    //close file
+}
+
+//TODO: Function read_file_from_server()
+void read_file_from_server(std::string file_name)
+{
+    //vector for lines of textfile
+    std::vector<std::string> file_buffer;
+    std::ifstream file(file_name);
+    std::string line;
+
+
+    //read file into buffer
+    //do
+        //read line from client
+        //if line is not EOF
+            //add line to file_buffer
+        //endif
+    //while line is not EOF
+
+    //for all line in file_buffer
+        //write line to file
+    //end for
+
+    //close file
+}
 
 int main(int argc, char *argv[])
 {
@@ -341,100 +422,11 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-//TODO: Clean up and finish Spyke's code.  Remove code implemented on server-side
 
-void clientFile(std::string name, char a)
-{
-    //check if the file is writeLocked
-    if (std::find(users.begin(), users.end(), name) != writeVector.end())
-    {
-        //users cannot read or write when writeLocked
-        std::out << "File: " << name << "cannot be accessed at this time." << std::endl;
-    }
-        //check if the file is readLocked
-    else if (std::find(users.begin(), users.end(), name) != readVector.end())
-    {
-        //Allow reading access if readLocked
-        if (a.compare("r") == 0)
-        {
-            //call readFile Function
-        }
-        else if (a.compare("w") == 0)
-        {
-            //Users cannot write when readLocked
-            std::out << "File: " << name << "cannot be accessed at this time." << std::endl;
-        }
-            //error when char a is not "r" or "w"
-        else
-        {
-            error("ERROR command not valid");
-        }
-    }
-        //if the file is not readLocked or writeLocked
-    else
-    {
-        //Allow reading access
-        if (a.compare("r") == 0)
-        {
-            //call readFile Function
-        }
-            //Allow writing access
-        else if (a.compare("w") == 0)
-        {
-            //call writeFile Function
-        }
-            //error when char a is not "r" or "w"
-        else
-        {
-            error("ERROR command not valid");
-        }
-    }
-}
 
-void readfile(std::string name)
-{
-    //vector for lines of textfile
-    std::vector<std::string> fileLines;
-    std::ifstream file(name);
-    std::string line;
 
-    //store the lines into vector fileLines
-    while (std::getline(file, line))
-    {
-        std::string nLine;
-        nLine = line + "\n";
-        fileLines.push_back(nLine);
-    }
 
-    //reverse the vector
-    std::vector<std::string> saveLines(fileLines.rbegin(), fileLines.rend());
 
-    //save vector into file name
-    ???
-}
 
-void writefile(std::string name)
-{
-    //vector for lines of textfile
-    std::vector<std::string> fileLines;
-    std::ifstream file(name);
-    std::string line;
 
-    //allow user to edit file
-    ???
-
-    //store the lines into vector fileLines
-    while (std::getline(file, line))
-    {
-        std::string nLine;
-        nLine = line + "\n";
-        fileLines.push_back(nLine);
-    }
-
-    //reverse the vector
-    std::vector<std::string> saveLines(fileLines.rbegin(), fileLines.rend());
-
-    //save vector into file name
-    ???
-}
 
