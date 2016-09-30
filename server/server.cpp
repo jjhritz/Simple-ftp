@@ -248,35 +248,44 @@ void read_file_to_client(std::string file_name)
     //open file_stream
     std::ifstream file(file_name);
 
-    //read file into buffer
-    //while line is not EOF
-    while (std::getline(file, line))
+    if(file.is_open())
     {
-        //getline removes the newline character, so add it back in
-        line = line + "\n";
-        //add line to file_buffer
-        file_buffer.push_back(line);
-    }
-    //endwhile
+        //read file into buffer
+        //while line is not EOF
+        while (std::getline(file, line)) {
+            //getline removes the newline character, so add it back in
+            line = line + "\n";
+            //add line to file_buffer
+            file_buffer.push_back(line);
+        }
+        //endwhile
 
-    //while file_buffer is not empty, write last line to client
-    //while file_buffer is not empty
-    while(!file_buffer.empty())
+        //while file_buffer is not empty, write last line to client
+        //while file_buffer is not empty
+        while (!file_buffer.empty()) {
+            //get the last line in the buffer
+            line = file_buffer.back();
+            //remove the last line from the buffer
+            file_buffer.pop_back();
+            //write line to socket
+            client_write(line);
+        }
+        //endwhile
+
+        //write EOF to client
+        client_write(std::to_string(EOF));
+
+        //close file
+        file.close();
+    }
+    //if file is not open
+    else
     {
-        //get the last line in the buffer
-        line = file_buffer.back();
-        //remove the last line from the buffer
-        file_buffer.pop_back();
-        //write line to socket
-        client_write(line);
+        //Write file could not be opened to clien
+        client_write("File could not be opened on server.");
+        //write EOF to client
+        client_write(std::to_string(EOF));
     }
-    //endwhile
-
-    //write EOF to client
-    client_write(std::to_string(EOF));
-
-    //close file
-    file.close();
 
     //remove file from read_lock
     read_lock.erase(std::remove(read_lock.begin(), read_lock.end(), file_name), read_lock.end());
@@ -313,27 +322,32 @@ void write_file_from_client(std::string file_name)
     //open file stream
     std::ofstream file(file_name);
 
-    //read file into buffer
-    do
+    if(file.is_open())
     {
-        //read line from client
-        line = client_read();
-        line_is_eof = is_eof(line);
-        //if line is not EOF
-        if(!line_is_eof)
+        //read file into buffer
+        do {
+            //read line from client
+            line = client_read();
+            line_is_eof = is_eof(line);
+            //if line is not EOF
+            if (!line_is_eof) {
+                //add line to file_buffer
+                file_buffer.push_back(line);
+            }
+            //endif
+        } while (!line_is_eof);
+
+        //for all line in file_buffer
+        for (int i = 0; i < file_buffer.size(); i++)
         {
-            //add line to file_buffer
-            file_buffer.push_back(line);
+            //write line to file
+            file << file_buffer[i];
         }
-        //endif
+        //end for
+
+        //close file
+        file.close();
     }
-    while(!line_is_eof);
-
-    //for all line in file_buffer
-        //write line to file
-    //end for
-
-    //close file
 
     //remove file from write lock
     write_lock.erase(std::remove(write_lock.begin(), write_lock.end(), file_name), write_lock.end());
