@@ -377,6 +377,8 @@ int main(int argc, char *argv[])
         std::cin.clear();
         std::cin.ignore(INT_MAX, '\n');
 
+        //send input to server
+
         //parse request for internal use
         std::vector<std::string> parsed_request = parse_request(input);
         file_name = parsed_request[0];
