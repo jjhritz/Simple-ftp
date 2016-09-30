@@ -417,9 +417,17 @@ int main(int argc, char *argv[])
         access = access_request(mode);
 
         //if access is true && mode is r
+	    if(access == true && parsed_request[1].compare("r") == 0)
+	    {
             //read file file_name from server
-        //else if access is true && mode is w
-            //write file file_name to server
+		read_file_from_server(file_name)
+	    }
+	    //else if access is true && mode is w
+	    else if 
+	    {
+		//write file file_name to server
+		    write_file_to_server(file_name)
+	    }
 
         do
         {
