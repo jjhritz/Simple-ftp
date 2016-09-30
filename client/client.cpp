@@ -177,8 +177,9 @@ bool access_request(std::string)
     bool access = false;
 
     //read LOCKED/UNLOCKED (0 or 1) from server, store in response
+	(int)response = read_server();
 	
-    convert response to integer, store in lock_state
+    //convert response to integer, store in lock_state
 	if(response == 0)
 	{
 		lock_state = 0;
@@ -198,17 +199,17 @@ bool access_request(std::string)
 		std::cout << "file is write-locked" << std::endl
 	}
     //else if lock_state is LOCKED && parsed_request[1] is w
-        /*else if (lock_state == 0 && parsed_request[1].compare("w") == 0)
+       *else if (lock_state == 0 && parsed_request[1].compare("w") == 0)
 	{
 	//print file is read-only
 		std::cout << "file is read only" << std::endl
-	}*/
+	}
     //else if file is UNLOCKED, file can be accessed
-	/*else if (lock_state == 1)
+	else if (lock_state == 1)
 	{
 	//access = true
 	access = true
-	}*/
+	}
 
     return access;
 }
